@@ -1,0 +1,33 @@
+[package]
+name = "rosemary"
+version = "0.1.0"
+edition = "2021"
+default-run = "rosemary"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dirs2 = "3.0.1"
+indicatif = "0.17"
+log = "0.4"
+env_logger = "0.10"
+itertools = "0.10"
+rayon = "1.6.1"
+thiserror = "1.0"
+anyhow = {version = "1.0"}
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.serde_json]
+version = "1.0"
+features = ["preserve_order"]
+
+[dependencies.chrono]
+version = "0.4"
+default_features = false
+features = ["clock", "std", "serde"]
+
+[[bin]]
+name = "rosemary"
