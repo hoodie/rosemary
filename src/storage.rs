@@ -1,12 +1,50 @@
+use itertools::{intersperse_with};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::{self, read_to_string},
+    iter::once,
     path::PathBuf,
     time::Duration,
 };
 
-type Command = String;
+use super::CommandWithArgs;
+
+#[derive(PartialEq, Eq, Hash, Clone, Debug, Default, Serialize, Deserialize)]
+pub struct CommandKey(String);
+
+impl From<CommandWithArgs> for CommandKey {
+    fn from(CommandWithArgs { cmd, args }: CommandWithArgs) -> Self {
+        let s = intersperse_with(
+            once(cmd).chain(args.into_iter().take_while(|item| !item.starts_with('-'))),
+            || String::from(" "),
+        )
+        .collect::<String>();
+        CommandKey(s)
+    }
+}
+
+impl AsRef<String> for CommandKey {
+    fn as_ref(&self) -> &String {
+        &self.0
+    }
+}
+
+#[test]
+fn derive_command_key() {
+    assert_eq!(
+        "cargo build",
+        CommandKey::from(CommandWithArgs::new("cargo", ["build"])).as_ref()
+    );
+    assert_eq!(
+        CommandKey::from(CommandWithArgs::new("cargo", ["build"])),
+        CommandKey::from(CommandWithArgs::new("cargo", ["build", "--verbose"])),
+    );
+    assert_eq!(
+        "cargo test",
+        CommandKey::from(CommandWithArgs::new("cargo", ["test", "--", "--nocapture"])).as_ref()
+    );
+}
 
 pub mod error {
     use thiserror::Error;
@@ -35,7 +73,7 @@ pub struct StoredDurations {
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct RunByCommand {
-    runs: HashMap<Command, RecordedRun>,
+    runs: HashMap<CommandKey, RecordedRun>,
 }
 
 impl From<RecordedRun> for RunByCommand {
@@ -64,7 +102,7 @@ impl StoredDurations {
         Ok(serde_json::from_str::<StoredDurations>(&content)?)
     }
 
-    pub fn read_previous(&self, command: &str) -> Option<Duration> {
+    pub fn read_previous(&self, command: &CommandKey) -> Option<Duration> {
         if let Ok(pwd) = std::env::current_dir() {
             self.paths
                 .get(&pwd)
@@ -97,14 +135,14 @@ impl StoredDurations {
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
 pub struct RecordedRun {
-    pub command: Command,
+    pub command: CommandKey,
     pub pwd: PathBuf,
     pub duration: Duration,
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
 impl RecordedRun {
-    pub fn here(command: Command, duration: Duration) -> Result<Self> {
+    pub fn here(command: CommandKey, duration: Duration) -> Result<Self> {
         Ok(RecordedRun {
             command,
             pwd: std::env::current_dir()?, // TODO: how about env.cwd or env.pwd?

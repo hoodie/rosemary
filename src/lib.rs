@@ -11,21 +11,46 @@ use indicatif::{HumanDuration, ProgressBar, ProgressState, ProgressStyle};
 
 mod storage;
 
+use crate::storage::CommandKey;
 pub use crate::storage::{RecordedRun, StoredDurations};
 
 trait Runner {
     fn run(&self) -> RecordedRun;
 }
 
-pub fn spawn_child(
-    command: &str,
-    args: impl IntoIterator<Item = String>,
-) -> Result<Child, Box<dyn Error>> {
-    Ok(std::process::Command::new(command)
-        .args(args)
+#[derive(Clone, Debug)]
+pub struct CommandWithArgs {
+    pub cmd: String,
+    pub args: Vec<String>,
+}
+
+impl CommandWithArgs {
+    pub fn new<S: Into<String>>(cmd: &str, args: impl IntoIterator<Item = S>) -> Self {
+        CommandWithArgs {
+            cmd: cmd.into(),
+            args: args.into_iter().map(Into::into).collect(),
+        }
+    }
+
+    pub fn from_env() -> Option<Self> {
+        let mut full_cmd = std::env::args().skip(1);
+        full_cmd.next().map(|cmd| CommandWithArgs {
+            cmd,
+            args: full_cmd.map(Into::into).collect(),
+        })
+    }
+}
+
+pub fn spawn_child(call: CommandWithArgs) -> Result<(Child, CommandKey), Box<dyn Error>> {
+    let child = std::process::Command::new(&call.cmd)
+        .args(&call.args)
         .stdout(Stdio::piped())
         .spawn()
-        .map_err(|e| anyhow!("cannot run command {command} {}", e))?)
+        .map_err(|e| anyhow!("cannot run command {} {}", call.cmd, e))?;
+
+    let key: CommandKey = call.into();
+
+    Ok((child, key))
 }
 
 fn update_progress(
@@ -60,8 +85,7 @@ fn update_progress(
 }
 
 pub fn run_with_progress(
-    command: &str,
-    args: impl IntoIterator<Item = String>,
+    call: CommandWithArgs,
     expected_duration: Duration,
 ) -> Result<RecordedRun, Box<dyn Error>> {
     let pb = ProgressBar::new(expected_duration.as_millis() as u64);
@@ -77,7 +101,7 @@ pub fn run_with_progress(
 
     let start_time = std::time::Instant::now();
 
-    let mut child = spawn_child(command, args)?;
+    let (mut child, command_key) = spawn_child(call)?;
 
     let reader = child.stdout.take().unwrap();
     update_progress(
@@ -91,13 +115,10 @@ pub fn run_with_progress(
 
     println!("done after {}", HumanDuration(duration));
 
-    Ok(RecordedRun::here(command.into(), duration)?)
+    Ok(RecordedRun::here(command_key, duration)?)
 }
 
-pub fn run_with_spinner(
-    command: &str,
-    args: impl IntoIterator<Item = String>,
-) -> Result<RecordedRun, Box<dyn Error>> {
+pub fn run_with_spinner(call: CommandWithArgs) -> Result<RecordedRun, Box<dyn Error>> {
     let pb = ProgressBar::new_spinner();
     pb.enable_steady_tick(Duration::from_millis(120));
     pb.set_style(
@@ -107,7 +128,7 @@ pub fn run_with_spinner(
 
     let start_time = std::time::Instant::now();
 
-    let mut child = spawn_child(command, args)?;
+    let (mut child, command_key) = spawn_child(call)?;
 
     let reader = child.stdout.take().unwrap();
     update_progress(
@@ -122,5 +143,5 @@ pub fn run_with_spinner(
 
     println!("done after {:.2} seconds", duration.as_secs_f64());
 
-    Ok(RecordedRun::here(command.into(), duration)?)
+    Ok(RecordedRun::here(command_key, duration)?)
 }
