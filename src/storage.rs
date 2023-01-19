@@ -1,4 +1,4 @@
-use itertools::{intersperse_with};
+use itertools::intersperse_with;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,

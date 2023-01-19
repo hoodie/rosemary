@@ -23,11 +23,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         })
         .init();
 
-    if let Some(call) = 
-     rosemary::CommandWithArgs::from_env()
-     {
-
-        log::trace!("{:#?} | {:#?}",  call.cmd,  call.args);
+    if let Some(call) = rosemary::CommandWithArgs::from_env() {
+        log::trace!("{:#?} | {:#?}", call.cmd, call.args);
 
         let mut stored_durations = StoredDurations::load().unwrap_or_default();
 
@@ -35,13 +32,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         log::warn!("skipping args");
 
-        let latest_run = if let Some(prior_duration) = stored_durations.read_previous(&call.clone().into()) {
-            log::trace!("previous run took ~{}", HumanDuration(prior_duration));
-            rosemary::run_with_progress(call, prior_duration)?
-        } else {
-            log::trace!("no previous runs, running without progress bar");
-            rosemary::run_with_spinner(call)?
-        };
+        let latest_run =
+            if let Some(prior_duration) = stored_durations.read_previous(&call.clone().into()) {
+                log::trace!("previous run took ~{}", HumanDuration(prior_duration));
+                rosemary::run_with_progress(call, prior_duration)?
+            } else {
+                log::trace!("no previous runs, running without progress bar");
+                rosemary::run_with_spinner(call)?
+            };
 
         stored_durations.add(latest_run);
         stored_durations.store()?;

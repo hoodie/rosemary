@@ -6,7 +6,7 @@
 <small> but no Thyme </small>
 </h1>
 
-[![build](https://img.shields.io/github/actions/workflow/status/hoodie/rosemary/ci.yml?branch=main)](https://github.com/hoodie/notify-rust/actions?query=workflow%3A"Continuous+Integration")
+[![build](https://img.shields.io/github/actions/workflow/status/hoodie/rosemary/ci.yml?branch=main)](https://github.com/hoodie/rosemary/actions?query=workflow%3A"Continuous+Integration")
 [![Crates.io](https://img.shields.io/crates/d/rosemary)](https://crates.io/crates/rosemary)
 [![contributors](https://img.shields.io/github/contributors/hoodie/rosemary)](https://github.com/hoodie/rosemary/graphs/contributors)
 ![maintenance](https://img.shields.io/maintenance/yes/2023)
